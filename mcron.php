@@ -4,6 +4,8 @@
 <?php require_once("KillLib.php"); ?>
 
 <?php
+//////////////КАЖДЫЕ 10 МИНУТ РАБОТАЕТ
+
     foreach(GetPeers() as $tmp){
         $chatid = $tmp;
         $mutes = GetMute();
@@ -26,5 +28,17 @@
                 mysqli_query($link, $sql);
             }
         }
-    }
+        
+        if(GetGayBar()){
+            $lasttime = explode(':', GetLastTimeGayBar());
+            $lt = $lasttime[0]*60 + $lasttime[1] + $lasttime[2]/60;
+            $currenttime = explode(':', date('H:i:s'));
+            $ct = $currenttime[0]*60 + $currenttime[1] + $currenttime[2]/60;
+            
+            if($ct - $lt > 50){
+                MessSend($chatid, "♂Gay Bar♂ закрыт из за невктивности");
+                SetGayBar(false);
+            }
+        }
+    }   
 ?>

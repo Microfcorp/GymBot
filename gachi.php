@@ -1,6 +1,17 @@
 <?php
 $Gachirole = Array('4' => "Dungeon Masters", '1' => "Fucking Slave", '3' => "Billy", '0' => "Anal", '2' => "Boy next door");
 $CumType = Array('0' => "Cum on face", '1' => "Cum on Anal", '2' => "Cum on head", '3' => "Cum on dick");
+
+$GachiMics = Array('Валим на Gay Party' => "audio125883149_456240300", 'Федерико Феллини' => "audio350385308_456241006", 'Два корабля' => "audio125883149_456240274", 'Хардбас' => "audio350385308_456240944", 'Gay Bar' => "audio-2001685501_85685501");
+
+function AllMisc(){
+	global $GachiMics;
+	$str = "";
+	foreach ($GachiMics as $tmp)
+		$str .= $tmp . ",";
+	return $str;
+}
+
 function AllRole(){
 	global $Gachirole;
 	$str = "";
@@ -31,8 +42,27 @@ function ChangeRole($userid, $roleid){
 	global $chatid;
     $res = mysqli_query($link, "UPDATE `Users` SET `GachiRole`='$roleid' WHERE `ID_Chat`='$chatid' AND `ID` = ".$userid);
 }
+function GetGayBar(){
+	global $link;
+	global $chatid;
+    $res = mysqli_query($link, "SELECT `GayBar` FROM `Peers` WHERE `ID`= ".$chatid);
+    while($row = $res->fetch_assoc())
+        return $row['GayBar'] == 1;
+}
+function GetLastTimeGayBar(){
+	global $link;
+	global $chatid;
+    $res = mysqli_query($link, "SELECT `DateGayBar` FROM `Peers` WHERE `ID`= ".$chatid);
+    while($row = $res->fetch_assoc())
+        return $row['DateGayBar'];
+}
+function SetGayBar($bar){
+	global $link;
+	global $chatid;
+    $res = mysqli_query($link, "UPDATE `Peers` SET `DateGayBar`=CURTIME(), `GayBar`=".($bar ? '1' : '0')." WHERE `ID`= ".$chatid);
+}
 function GetRandomCum(){
 	global $CumType;
-	return $CumType[rand(0, count($CumType))];
+	return $CumType[rand(-1, count($CumType)-1)];
 }
 ?>

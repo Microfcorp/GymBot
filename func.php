@@ -215,11 +215,49 @@ function vkApi_photosSaveMessagesPhoto($photo, $server, $hash) {
   ));
 }
 
+function vkApi_setChatPhoto($upload) {
+  return _vkApi_call('messages.setChatPhoto', array(
+    'file'  => $upload,
+  ));
+}
+
+function vkApi_docsSave($file, $title) {
+  return _vkApi_call('docs.save', array(
+    'file'  => $file,
+    'title'  => $title,
+    'tag'  => $title,
+  ));
+}
+
+function vkApi_storiesSave($respa) {
+  return _vkApi_call('stories.save', array(
+    'upload_results'  => $respa,
+  ));
+}
+
 function vkApi_docsGetMessagesUploadServer($type) {
 	global $chatid;
   return _vkApi_call('docs.getMessagesUploadServer', array(
     'peer_id' => $chatid,
     'type'    => $type,
+  ));
+}
+
+function vkApi_GetChatUploadServer($x, $y, $size) {
+	global $chatid;
+  return _vkApi_call('photos.getChatUploadServer', array(
+    'chat_id' => $chatid,
+    'crop_x'    => $x,
+    'crop_y'    => $y,
+    'crop_width'    => $size,
+  ));
+}
+
+function vkApi_GetPhotoStoriesUploadServer($addtonews, $users = '') {
+	global $chatid;
+  return _vkApi_call('stories.getPhotoUploadServer', array(
+    'add_to_news' => $addtonews,
+    'user_ids'    => $users,
   ));
 }
 
@@ -250,6 +288,44 @@ function _bot_uploadPhoto($file_name) {
   return $photo;
 }
 
+function _bot_uploadAM($file_name) {
+  $upload_server_response = vkApi_docsGetMessagesUploadServer("audio_message");
+  $upload_response = uploadPhoto($upload_server_response['upload_url'], $file_name);
+
+  $file = $upload_response['file'];
+
+  $save_response = vkApi_docsSave($file, basename($file, ".ogg"));
+  $photo = array_pop($save_response);
+
+  return $photo;
+}
+
+function _bot_uploadChatAva($file_name) {///////////////
+  $upload_server_response = vkApi_GetChatUploadServer('300','300','200');
+  //var_dump($upload_server_response);
+  $upload_response = uploadPhoto($upload_server_response['upload_url'], $file_name);
+
+  $file = $upload_response['response'];
+
+  $save_response = vkApi_setChatPhoto($file);
+  $photo = array_pop($save_response);
+
+  return $photo;
+}
+
+function _bot_PublishPhotoStories($file_name, $addtonews = 1, $users = '') {///////////////
+  $upload_server_response = vkApi_GetPhotoStoriesUploadServer($addtonews, $users);
+  //var_dump($upload_server_response);
+  $upload_response = uploadPhoto($upload_server_response['upload_url'], $file_name);
+
+  $file = $upload_response['response'];
+
+  $save_response = vkApi_storiesSave($file);
+  $photo = array_pop($save_response);
+
+  return $photo;
+}
+
 function getGroupsById($groupid){
 	global $token;
 	$request_params = array(
@@ -260,6 +336,25 @@ function getGroupsById($groupid){
     $get_params = http_build_query($request_params);  
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/groups.getById?' . $get_params);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $m = @curl_exec($ch);
+    curl_close($ch);
+	//file_put_contents("t.txt", $m);
+    return json_decode($m, true)['response'];
+}
+
+function searchMessage($text){ //только для лс, не для беседы
+	global $token;
+	global $chatid;
+	$request_params = array(
+            'q' => $text,
+            'peer_id' => $chatid,
+            'access_token' => $token,
+            'v' => '5.131',            
+        );
+    $get_params = http_build_query($request_params);  
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/messages.search?' . $get_params);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $m = @curl_exec($ch);
     curl_close($ch);
@@ -342,14 +437,21 @@ function kickUser($userid){
     return json_decode($m, true);
 }
 
-function GetWall($ownerid){
-	$offse = (file_exists('countwall/'.$ownerid) ? random_int(0, intval(file_get_contents('countwall/'.$ownerid))) : 1);
+function GetLastWall($ownerid, $savecount = false){ //последдний пост и общее колличество
+	$wall = GetWall($ownerid, 0, 2, $savecount);
+    if(isset($wall['items'][0]['is_pinned']) && $wall['items'][0]['is_pinned'] == '1')
+        return [$wall['items'][1], $wall['count']];
+    else
+        return [$wall['items'][0], $wall['count']];
+}
+
+function GetWall($ownerid, $offset = 0, $count = 1, $issavecount = true){
 	$request_params = array(
             'owner_id' => $ownerid,
-            'count' => 2,
-			'offset' => $offse,
+            'count' => $count,
+			'offset' => $offset,
             'access_token' => '204626222046262220462622fe201be021220462046262279cbce62c5301f21e554f471',
-            'v' => '5.130',            
+            'v' => '5.131',            
 		);
     $get_params = http_build_query($request_params);  
     $ch = curl_init();
@@ -359,22 +461,27 @@ function GetWall($ownerid){
     curl_close($ch);
 	$rt = json_decode($m, true)['response'];
 	
-	if($rt['count'] > $offse){
-		$request_params = array(
+	if($issavecount) file_put_contents('countwall/'.$ownerid, $rt['count']);
+    return $rt;
+}
+
+function GetRandomWall($ownerid){
+	$offse = (file_exists('countwall/'.$ownerid) ? rand(0, intval(file_get_contents('countwall/'.$ownerid))) : 1);
+	$request_params = array(
             'owner_id' => $ownerid,
-            'count' => 1,
-			'offset' => 0,
+            'count' => 2,
+			'offset' => $offse,
             'access_token' => '204626222046262220462622fe201be021220462046262279cbce62c5301f21e554f471',
-            'v' => '5.130',            
-			);
-		$get_params = http_build_query($request_params);  
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/wall.get?' . $get_params);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		$m = @curl_exec($ch);
-		curl_close($ch);
-		$rt = json_decode($m, true)['response'];
-	}
+            'v' => '5.131',            
+		);
+    $get_params = http_build_query($request_params);  
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/wall.get?' . $get_params);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $m = @curl_exec($ch);
+    curl_close($ch);
+	$rt = json_decode($m, true)['response'];
+	
 	file_put_contents('countwall/'.$ownerid, $rt['count']);
     return $rt;
 }
@@ -450,6 +557,21 @@ function GetPin(){ //возвращает закон беседы
 	global $token;
 	$res = mysqli_query($link, "SELECT `Pin` FROM `Peers` WHERE `ID` = ".$chatid);
 	while($row = $res->fetch_assoc())
+		return preg_replace_callback(
+            "/[id+.[0-9]+.+]/",
+            function ($matches)
+            {
+              $tpu = doubleval(preg_replace("/[^-0-9\.]/","",$matches[0]));
+              return GetLinkUser($tpu);
+            },
+            trim($row['Pin']));
+}
+function ReadPin(){ //возвращает закон беседы
+    global $link;
+	global $chatid;
+	global $token;
+	$res = mysqli_query($link, "SELECT `Pin` FROM `Peers` WHERE `ID` = ".$chatid);
+	while($row = $res->fetch_assoc())
 		return trim($row['Pin']);
 }
 function GetVKName($id){ //имя пользователя из вк
@@ -479,7 +601,7 @@ function GetLinkUser($userid){
 	return LinkUser($userid, GetName($userid));
 }
 function LinkUser($userid, $name){
-	return "[id$userid|$name] ";
+	return "[id$userid|$name]";
 }
 function GetUsersOnline(){
 	global $token;
@@ -508,5 +630,59 @@ function GetUsersOnline(){
       Сейчас в сети: {$userOnline}:
       {$Onlinelist}
       ");
+}
+function GenerateSlavyanVodka($peerid){
+    global $token;
+    global $link;
+    global $Month_r;
+    
+    $chatInfo = getConversationsById($peerid);
+    $chatsettings = $chatInfo['items'][0]['chat_settings'];
+    
+    $month = date('m');
+	$day = date('d');
+	$year = date('Y');
+	$isdrochka = ($month != 11);
+	$monthrus = $Month_r[$month][1];
+    $zavod = date('N') > 5;
+    
+    $retur = "Славянкая 🍷водка🍷 за $day $monthrus $year года\n";
+    $retur .= "В беседе: ⚖".$chatsettings['title']."⚖\n";
+    $retur .= "С количеством: 🗡".$chatsettings['members_count']."🗡\n";
+    $retur .= "\n";
+    $retur .= "Дрочить славянам: ".($isdrochka ? "разрешено" : "ЗАПРЕЩЕННО")."\n";
+    $retur .= ((!$isdrochka && ($day > 29) && ($month+1 != 11)) ? "Осталось совсем немного, воздержись Брат"."\n" : "");
+    $retur .= "На заводе: ".($zavod ? "выходной" : "рабочий день")."\n";
+    $retur .= ($zavod ? "" : "Все на завод!"."\n");
+    $retur .= "Приятного ".(!$zavod ? "трудового рабочего" : "")." дня, Славяне"."\n";
+    return $retur;
+}
+
+/**
+ * Получит случайный файл из некоторой директории
+ */
+function random_file($dir = 'audio/gay')
+{
+    $files = glob($dir . '/*.*'); //путь + маска содержимого
+    $file = array_rand($files);
+    return $files[$file];
+}
+
+function GenerateRandomAudio($dir = 'audio/gay')
+{
+    $filea = random_file();
+    $yar = _bot_uploadAM($filea);
+    $yar['files'] = basename($filea, ".ogg");
+    return $yar;
+}
+function GenerateAudioAttachmnt($filea)
+{
+    $t = _bot_uploadAM($filea);
+    return 'doc'.$t['owner_id'].'_'.$t['id'];
+}
+function GenerateRandomAudioAttachmnt($dir = 'audio/gay')
+{
+    $t = GenerateRandomAudio($dir);
+    return 'doc'.$t['owner_id'].'_'.$t['id'];
 }
 ?>
