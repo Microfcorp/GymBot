@@ -37,6 +37,11 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
         //Получаем текст сообщения
 		$bodyRead = $data->object->message->text;
         $body = mb_strtolower($bodyRead); //Переводим всю строку в нижний регистр
+        
+        $rrr = isset($data->object->message->payload) ? json_decode($data->object->message->payload, true) : null;
+        if($rrr != null){
+            $body = mb_strtolower($rrr['rep']);
+        }
 
 		$peer_ids = $data->object->message->peer_id; //id назначенияы (беседы)
 		$messageid = $data->object->message->conversation_message_id; //id сообщения в беседе
@@ -46,7 +51,9 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			exit("OK");
 		
 		//Получаем имя пользователя
-        $userName = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$userId}&v=5.130&access_token={$token}"))->response[0]->first_name;
+        $sendingUser = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$userId}&fields=sex&v=5.130&access_token={$token}"));
+        $userName = $sendingUser->response[0]->first_name;
+        $userSex = $sendingUser->response[0]->sex;
 		$chatid = $peer_ids; //глобальная переменная номера чата
 		
         RegistrationUser($userId, $userName); //Регистрируем пользователя в базе данных
@@ -68,8 +75,8 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 		//$slovar = ;
 		foreach(GetLibKill() as $sl){
 			$sss = $sl[4];
-			if(IsStr($body, [$sss])){
-				if($sl[3] == 3 && !IsAdmin($userId)){
+			if(IsStr($body, [$sss]) && !IsAdmin($userId)){
+				if($sl[3] == 3){
 					MessSend($peer_ids, GetLinkUser($userId)." нарушил славянско-братский закон, и, если не админ, был изгнан за употребление '$sss'", $userId);
 					kickUser($userId);
 				}
@@ -168,25 +175,6 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 		elseif(IsStr($body, ["/мой ид", "/мой хд", "/мой id"])){ //Если в тексте сообщения найдено "мой ид" ИЛИ "мой хд"
 			MessSendReply($peer_ids, "Твой ID - ".$userId, $userId);
 		}
-        elseif(IsStr($body, ["/гей бар", "/gay bar", "/gey bar"])){ //Гей бар
-            $isbar = GetGayBar();
-            SetGayBar(true);
-            if($isbar){               
-                $photo = _bot_uploadPhoto('photo/gaybar.jpg');
-                MessSendAttach($peer_ids, "♂Oh, sheet♂ приветствуем ".GetLinkUser($userId)." в ♂Gay Bar♂\nПрисоединяйся к ♂Fisting Ass♂", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Gay Bar']);
-            }
-            else{
-                $photo = _bot_uploadPhoto('photo/gaybart.jpg');
-                MessSendAttach($peer_ids, GetLinkUser($userId)." запустил ♂Gay Bar♂\nДа начнется ♂Fisting Ass♂\nДа изыдут ♂Fucking Slave♂\nИ прибудет ♂Dungeon Master♂", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.(rand(0,2) == 0 ? $GachiMics['Федерико Феллини'] : $GachiMics['Два корабля']));
-            }
-        }
-        elseif(IsStr($body, ["гей бар", "gay bar"])){ //ГЕЙ БАААААААРРРРР
-            if(GetGayBar()){
-                SetGayBar(true);
-                $photo = _bot_uploadPhoto('photo/gaybar.jpg');
-                MessSendAttach($peer_ids, "♂Oh, my cum♂ ".GetLinkUser($userId)." сказал ♂Gay Bar♂. Мы тебя приглашаем 😏", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Валим на Gay Party']);
-            }
-        }
         elseif(IsStr($body, ["/остановить гей бар", "/стоп гей бар", "/остановить gay bar", "/стоп gay bar"])){ //ГЕЙ БАААААААРРРРР
 			$isbar = GetGayBar();
             SetGayBar(false);
@@ -198,6 +186,31 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
                 MessSendReply($peer_ids, "Нельзя остановить то, чего, увы, нет", $userId);
             }
 		}
+        elseif(IsStr($body, ["/гей бар", "/gay bar", "/gey bar"])){ //Гей бар
+            if($userSex == 1){
+                $photo = _bot_uploadPhoto('photo/nowom.jpg');
+                MessSendAttach($peer_ids, "Вход в ♂Gay Bar♂ женщинам воспрещен", 'photo'.$photo['owner_id'].'_'.$photo['id']);
+            }
+            else{
+                $isbar = GetGayBar();
+                SetGayBar(true);
+                if($isbar){               
+                    $photo = _bot_uploadPhoto('photo/gaybar.jpg');
+                    MessSendAttach($peer_ids, "♂Oh, sheet♂ приветствуем ".GetLinkUser($userId)." в ♂Gay Bar♂\nПрисоединяйся к ♂Fisting Ass♂", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Gay Bar']);
+                }
+                else{
+                    $photo = _bot_uploadPhoto('photo/gaybart.jpg');
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." запустил ♂Gay Bar♂\nДа начнется ♂Fisting Ass♂\nДа изыдут ♂Fucking Slave♂\nИ прибудет ♂Dungeon Master♂", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.(rand(0,2) == 0 ? $GachiMics['Федерико Феллини'] : $GachiMics['Два корабля']));
+                }
+            }
+        }
+        elseif(IsStr($body, ["гей бар", "gay bar"])){ //ГЕЙ БАААААААРРРРР
+            if(GetGayBar() && $userSex != 1){
+                SetGayBar(true);
+                $photo = _bot_uploadPhoto('photo/gaybar.jpg');
+                MessSendAttach($peer_ids, "♂Oh, my cum♂ ".GetLinkUser($userId)." сказал ♂Gay Bar♂. Мы тебя приглашаем 😏", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Валим на Gay Party']);
+            }
+        }
         elseif(IsStr($body, ["/фраза", "/гачи фраза", "/гей фраза"])){ //ГЕЙ БАААААААРРРРР
 			$t1 = GenerateRandomAudio();
             MessSendAttach($peer_ids, "♂Oh, ".$t1['files']."♂", 'doc'.$t1['owner_id'].'_'.$t1['id']);
@@ -285,9 +298,10 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 		elseif(IsStr($body, ["/все роли", "/посмотреть роли", "гачи роли"])){			
 			MessSend($peer_ids, "В боте есть роли:<br>".AllRole(), $userId);
 		}
-		elseif(IsStr($body, ["/сделать fisting", "/сделать fisting ass", "/сделать ♂fisting ass♂", "/fisting ass"])){	
-			$fist_id = explode('|', explode('[id', $bodyRead)[1])[0];
-			if($fist_id ==$userId){
+		elseif(IsStr($body, ["/сделать fisting", "/сделать fisting ass", "/сделать ♂fisting ass♂", "/fisting ass", "/fisting", "/фистинг"])){	
+			$expl = explode('[id', $bodyRead);
+			$fist_id = (count($expl) < 2 ) ? $userId : explode('|', $expl[1])[0];;
+			if($fist_id == $userId){
 				MessSend($peer_ids, GetLinkUser($userId)." поехал крышей и сделал ♂fisting ass♂ сам себе", $userId);
                 MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/The semen.ogg"));
 			}
@@ -302,13 +316,13 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			elseif(GetRole($fist_id) == GetRole($userId)){
 				$ok = rand(0, 2);
 				if($ok == 1) MessSend($peer_ids, GetLinkUser($userId)." долго боролся, и, наконец сделал ♂fisting ass♂ ".GetLinkUser($fist_id), $userId);
-				else MessSend($peer_ids, GetLinkUser($userId)." долго боролся и не смог сделал ♂fisting ass♂ ".GetLinkUser($fist_id), $userId);
+				else MessSend($peer_ids, GetLinkUser($userId)." долго боролся, пал ♂dick♂ и не смог сделал ♂fisting ass♂ ".GetLinkUser($fist_id), $userId);
                 MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Spit YEEEEEAAAAHHH.ogg"));
 			}
 		}
-		elseif(IsStr($body, ["/сделать cum", "/cum"])){	
+		elseif(IsStr($body, ["/сделать cum", "/cum", "/кам", "/кончить"])){	
 			$expl = explode('[id', $bodyRead);
-			$fist_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];;
+			$fist_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];
 			if(count($expl) < 2){
 				MessSend($peer_ids, GetLinkUser($userId)." сделал ♂".GetRandomCum()."♂ в этой ♂Gym♂", $userId);
                 MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Orgasm 1.ogg"));
@@ -326,9 +340,10 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
                 MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Spank.ogg"));
 			}
 		}
-		elseif(IsStr($body, ["/онлайн", "/online", "кто в сети", "брат кто в сети"])){
-			if(!IsAdmin($userId)) MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);			
-			else MessSend($peer_ids, GetUsersOnline(), $userId);
+		elseif(IsStr($body, ["/онлайн", "/online", "/кто в сети", "/брат кто в сети"])){
+			/*if(!IsAdmin($userId)) MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);			
+			else MessSend($peer_ids, GetUsersOnline(), $userId);*/
+            MessSend($peer_ids, "Функция отключена в версии бота ".BOTVERSION, $userId);
 		}
 		elseif(IsStr($body, ["/получить пацанское гачимучи", "/пацанское гачимучи", "/получить пацанский гачимучи", "/пацанский гачимучи"])){
 			$wall = GetRandomWall('-113661329');
@@ -341,7 +356,8 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			MessSendAttach($peer_ids, "Случайная запись из [club165104294|Танцы Рикардо Милоса]", "wall-165104294_$wallid");
 		}
 		elseif(IsStr($body, ["/изгнать", "/выгнать", "/прогнать"])){			
-			$u_id = explode('|', explode('[id', $bodyRead)[1])[0];
+			$expl = explode('[id', $bodyRead);
+			$u_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];
 			if($u_id == $userId) MessSendReply($peer_ids, "нельзя изгнать себя", $userId);
 			else{				
 				if(!IsAdmin($userId)) MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
@@ -349,24 +365,83 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 					if(IsAdmin($u_id)) MessSendReply($peer_ids, "нельзя изгать администратора", $userId);
 					else{
 						kickUser($u_id);
-						MessSend($peer_ids, GetLinkUser($u_id)." был изгнан из беседы", $userId);
+						MessSend($peer_ids, GetLinkUser($u_id)." был изгнан из славянского братства", $userId);
 					}
 				}
 			}			
+		}
+        elseif(IsStr($body, ["/чистка баб", "/отчистка баб", "/уличение баб"])){
+            if(!IsAdmin($userId)) MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
+            else{
+                $expl = GetNumber($body);
+                $expl = $expl < 2 ? 2 : $expl;
+                $tchat = getConversationsMembersAll()["profiles"];
+                $func = function($value) {
+                    $t = empty($value['deactivated']) && $value['sex'] == 1;
+                    if($t)
+                        return $value['id'];
+                };         
+                $tchat = array_map($func, $tchat);
+                $tchat = array_diff($tchat, array(null));           
+                $tchatid = array_rand($tchat, $expl);
+                $tmp = "Из беседы были изгнаны следующие бабы:\n";
+                foreach($tchatid as $tmp1){
+                    $user = $tchat[$tmp1];
+                    if(!IsAdmin($user)){
+                        $tmp .= "🧹" . GetLinkUser($user) . "🧹\n";
+                        kickUser($user);
+                    }
+                }
+                $photo = _bot_uploadPhoto('photo/nowom.jpg');
+                MessSendAttach($peer_ids, $tmp, 'photo'.$photo['owner_id'].'_'.$photo['id']);
+            }            
+		}
+        elseif(IsStr($body, ["/чистка трупов", "/чистка анонимусов", "/чистка бебр"])){
+            if(!IsAdmin($userId)) MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
+            else{
+                $expl = GetNumber($body);
+                $expl = $expl < 2 ? 2 : $expl;
+                $tchat = getConversationsMembersAll()["profiles"];
+                $func = function($value) {
+                    $f1 = ["/рикардо", "/риккардо", "милос"];
+                    $t = isset($value['deactivated']) || IsStr(mb_strtolower($value['last_name']), $f1) || IsStr(mb_strtolower($value['first_name']), $f1) || (isset($value['last_seen']) && $value['last_seen'] < strtotime('1/1/2022'));
+                    if($t)
+                        return $value['id'];
+                };         
+                $tchat = array_map($func, $tchat);
+                $tchat = array_diff($tchat, array(null));           
+                $tchatid = array_rand($tchat, ($expl >= count($tchat) ? count($tchat)-1 : $expl));
+                $tmp = "Из беседы были изгнаны следующие трупы и аннонимнусы:\n";
+                foreach($tchatid as $tmp1){
+                    $user = $tchat[$tmp1];
+                    if(!IsAdmin($user)){
+                        $tmp .= "🧹" . GetLinkUser($user) . "🧹\n";
+                        kickUser($user);
+                    }
+                }
+                MessSend($peer_ids, $tmp, $userId);
+            }            
 		}
 		elseif(IsStr($body, ["/созвать всех"])){
 			if(!IsAdmin($userId)){
 				MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
 			}
 			else{
-				$mess = mb_substr($bodyRead, 14);
+				/*$mess = mb_substr($bodyRead, 14);
 				$countm = 0;
 				foreach (getConversationMembers()['profiles'] as $member) { // Прошли по массиву для регистрации пользователей по их id
-					$countm .= 1;
 					$user_id = $member['id']; // Получили id пользоавтеля
-					if($member['online'] == 1) MessSendReply($peer_ids, "Вас созывают в беседу Славяне и Братские народы<br>".$mess, $userId);        
+					if($member['online'] == 1)
+                    {
+                        if(isMessagesFromGroupAllowed($user_id)){
+                            $countm++;
+                            MessSend($user_id, "Вас созывают в беседу Славяне и Братские народы<br>".$mess, $userId);  
+                        }
+                    }                        
 				}
 				MessSend($peer_ids, "Все $countm участников были созваны", $userId);
+                */
+                MessSend($peer_ids, "Функция отключена в версии бота ".BOTVERSION, $userId);
 			}
 		}
 		elseif(IsStr($body, ["/славянское фото"])){
@@ -382,9 +457,57 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			else{
 				$u_id = explode('|', explode('[id', $bodyRead)[1])[0];
 				$mess = trim(explode(']', $bodyRead)[1]);
-				MessSend($u_id, "Вас призывает ".GetLinkUser($userId)." в беседу Славяне и Братские народы с сообщением: ".$mess, $userId);
-				MessSendReply($peer_ids, "Вы призвали ".GetLinkUser($userId), $userId);				
+                if(isMessagesFromGroupAllowed($u_id)){
+                    MessSend($u_id, "Вас призывает ".GetLinkUser($userId)." в беседу Славяне и Братские народы с сообщением: ".$mess, $userId);
+                    MessSendReply($peer_ids, "Вы призвали ".GetLinkUser($userId), $userId);
+                    //MessDelete($peer_ids, $messageid);
+                }
+                else{
+                    MessSendReply($peer_ids, "Вы не можете призвать ".GetLinkUser($u_id).", так как он не разрешил сообщения от сообщества", $userId);		
+                }    
 			}
+		}
+        elseif(IsStr($body, ["/итоги опроса"])){
+            if(!IsAdmin($userId)){
+				MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
+			}
+			else{
+                if(isset($data->object->message->reply_message->attachments[0]) && $data->object->message->reply_message->attachments[0]->type == "poll"){
+                    $pool = $data->object->message->reply_message->attachments[0]->poll;
+                    $txtwq = "В ".($pool->anonymous == true ? "аннонимном " : "")."опросе от инициатора ".GetLinkUser($pool->author_id).": ".$pool->question."\nИмеется всего: ".$pool->votes." голосов:\n";
+                    foreach($pool->answers as $ty){
+                        $txtwq .= $ty->votes . " голосов за вариант: ". $ty->text. ". Соотношение ". $ty->rate. " процентов\n";
+                    }
+                    $txtwq .= "\n";
+                    $txtwq .= ($pool->end_date == 0 ? "" : "Опрос окончится: ".date('d.m.Y H:i', $pool->end_date)." \n");
+                    MessSend($peer_ids, $txtwq, $userId);
+                }                              
+            }
+		}
+        elseif(IsStr($body, ["/удалить"])){
+            if(!IsAdmin($userId)){
+				MessSendReply($peer_ids, "это действие доступно только администраторам", $userId);
+			}
+			else{
+                $delcount = 0;
+                if(isset($data->object->message->reply_message->conversation_message_id)){
+                    $replymesid = $data->object->message->reply_message->conversation_message_id;
+                    MessDelete($peer_ids, $replymesid);
+                    $delcount++;
+                }
+                
+                if(isset($data->object->message->fwd_messages)){
+                    $fwdmes = $data->object->message->fwd_messages;
+                    $idsmes = "";
+                    foreach($fwdmes as $ty){
+                        $idsmes .= $ty->conversation_message_id . ',';
+                        $delcount++;
+                    }
+                    MessDelete($peer_ids, $idsmes);
+                }
+                //MessDelete($peer_ids, $data->object->message->conversation_message_id);
+                MessSendReply($peer_ids, "{$delcount} сообщений было удалено", $userId);
+            }
 		}
 		elseif(IsStr($body, ["/календарь"])){
 			$month = date('m');
@@ -394,7 +517,7 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			MessSendReply($peer_ids, "Сегодня $day число.<br>В этот ".($isdrochka ? "чудный" : "славный")." месяц $monthrus дрочить Славянам ".($isdrochka ? "разрешается)" : "ЗАПРЕЩАЕТСЯ"), $userId);
 		}
         elseif(IsStr($body, ["/сводка", "/славянская сводка", "/славянская водка"])){
-            $photo = _bot_uploadPhoto('photo/dzed.jpg');
+            $photo = _bot_uploadPhoto(IsRabDay() ? 'photo/zavod.jpg' : 'photo/portveinone.jpg');
 			MessSendAttach($peer_ids, GenerateSlavyanVodka($peer_ids), 'photo'.$photo['owner_id'].'_'.$photo['id']);
 		}
 		elseif(IsStr($body, ["/какая роль у"])){	
@@ -455,8 +578,50 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
             
             MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Fisting is 300 $.ogg"));
         }
-        elseif(IsStr($body, ["/boy", "/бой"])){	
-			MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Boy next door.ogg"));
+        elseif(IsStr($body, ["/boy", "/бой"])){
+            $expl = explode('[id', $bodyRead);
+            $fist_id = (count($expl) < 2 ) ? $userId : explode('|', $expl[1])[0];;
+            if(count($expl) < 2 || $fist_id == $userId){
+                MessSendAttach($peer_ids, "i`m", GenerateAudioAttachmnt("audio/gay/Boy next door.ogg"));
+            }
+            else{
+                MessSendAttach($peer_ids, GetLinkUser($fist_id), GenerateAudioAttachmnt("audio/gay/Boy next door.ogg"));
+            } 
+			
+        }
+        elseif(IsStr($body, ["/отвалить сиськи", "/отломать сиськи", "/украсть сиськи", "/опустить сиськи", "/отрезать сиськи", "/сиськ"])){
+            $expl = explode('[id', $bodyRead);
+            $fist_id = (count($expl) < 2 ) ? $userId : explode('|', $expl[1])[0];
+            if($fist_id == $userId){
+                if($userSex == 2)
+                    MessSendReply($peer_ids, "прости, брат, но сисек у тебя нет", $userId);
+                else
+                    MessSendAttach($peer_ids, "Балбесина ".GetLinkUser($userId)." потеряла свои сиськи", GenerateAudioAttachmnt("audio/gay/Deep dark fantasies.ogg"));
+            }
+            else{
+                $fistsex = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$fist_id}&fields=sex&v=5.130&access_token={$token}"))->response[0]->sex;
+                if($fistsex == 2)
+                    MessSendReply($peer_ids, "У ".GetLinkUser($fist_id)." отсутствует натуральные большие сиськи", $userId);
+                else
+                    MessSendAttach($peer_ids, "У ".GetLinkUser($fist_id)." отвалились сиськи от шаманства ".GetLinkUser($userId)." ...Только если они были)...", GenerateAudioAttachmnt("audio/gay/Deep dark fantasies.ogg"));
+            } 			
+        }
+        elseif(IsStr($body, ["/отвалить письк", "/сломать письк", "/сломать dick", "/сломать писк", "/отломать член", "/сломать член", "/письк"])){
+            $expl = explode('[id', $bodyRead);
+            $fist_id = (count($expl) < 2 ) ? $userId : explode('|', $expl[1])[0];
+            if($fist_id == $userId){
+                if($userSex == 1)
+                    MessSendReply($peer_ids, "прости, но dick у тебя нет", $userId);
+                else
+                    MessSendAttach($peer_ids, "Балбесина ".GetLinkUser($userId)." потерял свой dick", GenerateAudioAttachmnt("audio/gay/Deep dark fantasies.ogg"));
+            }
+            else{
+                $fistsex = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$fist_id}&fields=sex&v=5.130&access_token={$token}"))->response[0]->sex;
+                if($fistsex == 1)
+                    MessSendReply($peer_ids, "У ".GetLinkUser($fist_id)." отсутствует природный dick", $userId);
+                else
+                    MessSendAttach($peer_ids, "У ".GetLinkUser($fist_id)." отвалился dick от колдовства ".GetLinkUser($userId)." ...Только он у него был)...", GenerateAudioAttachmnt("audio/gay/Deep dark fantasies.ogg"));
+            } 			
         }
         elseif(IsStr($body, ["/обновить фото"])){	
 			_bot_uploadChatAva('photo/gaybar.jpg');
@@ -573,6 +738,64 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
                 MessSendReply($peer_ids, "прости, брат, но танцы только в ♂Gay Bar♂", $userId);
             }
         }
+        elseif(IsStr($body, ["/fuck", "/фак"])){	
+            if(GetGayBar()){                        
+                $expl = explode('[id', $bodyRead);
+                $fist_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];
+                if(count($expl) < 2){
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂fuck♂ всему братству. Фу, ♂latherman♂", GenerateAudioAttachmnt("audio/gay/Oh shit iam sorry.ogg"));                
+                }
+                elseif($fist_id == $userId){
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂fuck♂ сам себе", GenerateAudioAttachmnt("audio/gay/FUCK YOU.ogg"));
+                }
+                else{
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂fuck♂ ".GetLinkUser($fist_id), GenerateAudioAttachmnt("audio/gay/FUCK YOU.ogg"));
+                }
+                SetGayBar(true);
+            }
+            else{
+                MessSendReply($peer_ids, "прости, брат, но ♂fuck♂ только в ♂Gay Bar♂", $userId);
+            }
+        }
+        elseif(IsStr($body, ["/suck", "/сак"])){	
+            if(GetGayBar()){                        
+                $expl = explode('[id', $bodyRead);
+                $fist_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];
+                if(count($expl) < 2){
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂suck♂ всему братству. Фу, ♂latherman♂", GenerateAudioAttachmnt("audio/gay/Oh shit iam sorry.ogg"));                
+                }
+                elseif($fist_id == $userId){
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂suck♂ сам себе", GenerateAudioAttachmnt("audio/gay/Spit YEEEEEAAAAHHH.ogg"));
+                }
+                else{
+                    MessSendAttach($peer_ids, GetLinkUser($userId)." сделал ♂suck♂ ".GetLinkUser($fist_id), GenerateAudioAttachmnt("audio/gay/Spit YEEEEEAAAAHHH.ogg"));
+                }
+                SetGayBar(true);
+            }
+            else{
+                MessSendReply($peer_ids, "прости, брат, но ♂suck♂ только в ♂Gay Bar♂", $userId);
+            }
+        }
+		elseif(IsStr($body, ["/самовыпил", "/выпилиться"])){	          
+            $pp = SamovipilGD($userId);
+			//$pp = "photo/poves.jpg";
+			$photo = _bot_uploadPhoto($pp);
+            
+			if(!IsAdmin($userId)){				
+				MessSendAttach($peer_ids, "Брат ".GetLinkUser($userId)." устал от этой жизни и решил совершить самовыпил. Помянем его, да прибудет с ним все самое лучшие в мире ином. Братия, можете вернуть его назад", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Два корабля']);
+				kickUser($userId);
+			}
+			else{
+				$yt = GetMuteUser($userId);
+                if($yt == false){
+                    AddMute($userId, '0', '24:0:00');
+				}
+				MessSendAttach($peer_ids, "Брат ".GetLinkUser($userId)." устал от этой жизни и решил совершить самовыпил. Помянем его, да прибудет с ним все самое лучшие в мире ином. Мут на день, так как самовыпилился админ", 'photo'.$photo['owner_id'].'_'.$photo['id'].','.$GachiMics['Два корабля']);
+			}
+	
+            _bot_PublishPhotoStories($pp);
+            MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Thats power son.ogg"));
+		}
 		elseif(IsStr($body, ["/виселица", "/повесить", "/казнить"])){	          
             $expl = explode('[id', $bodyRead);
             $fist_id = (count($expl) < 2 ) ? $userId : explode('|', $expl[1])[0];
@@ -608,7 +831,7 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
             //_bot_PublishPhotoStories($pp);
             MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/WOO.ogg"));
 		}
-		elseif(IsStr($body, ["/шлепнуть по попке", "/по попке"])){
+		elseif(IsStr($body, ["/шлепнуть по попке", "/по попке", "/попк", "/по жопе"])){
             $photo = _bot_uploadPhoto('photo/popka.jpg');
             $expl = explode('[id', $bodyRead);
             $fist_id = (count($expl) < 2 ) ? "1" : explode('|', $expl[1])[0];;
@@ -623,7 +846,7 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
             }		
             MessSendAttach($peer_ids, "", GenerateAudioAttachmnt("audio/gay/Spank 3.ogg"));
 		}
-		elseif(IsStr($body, ["/наше сообщество"])){			
+		elseif(IsStr($body, ["/наше сообщество", "/сообщество", "/братство"])){			
 			MessSend($peer_ids, "Сообщество авторов этой беседы: [club165104294|Танцы Рикардо Милоса]", $userId);
 		}
         elseif(IsStr($body, ["/информация" , "/сведения"])){
@@ -657,7 +880,7 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			}
 			else{
 				$mid = MessSend($peer_ids, "📌ЗАКОН📌" . GetPin(), $userId);
-				PinMessage($mid[0]);
+				//PinMessage($mid[0]);
 			}
 		}
 		elseif(IsStr($body, ["/отчистить закон"])){
@@ -675,50 +898,65 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 		}
 		elseif(IsStr($body, ["/help", "/справка", "/комманды"])){			
 			MessSend($peer_ids, "Привет. Я Гачи бот, разработан я был [id125883149|Лехой] специально для беседы Славян и Братских народов. Мне нужны права администратора для работы в беседе
-			Я умею:");
+			Список аргументов:
+                <> - обязательные
+                {} - необязательные
+                ** - прикриленные или пересланные сообщения
+            Я умею:");
 			MessSend($peer_ids, "📍- /Привет - КОШКАТУН
 			📍- /информация - версия и настройки бота
-			📍- /Сменить имя <новое имя> - изменяет ваше имя
+			📍- /изменить имя <новое имя> - изменяет ваше имя
 			📍- /мой id - возвращает ваш id
 			📍- /кто я - показывает вашу Gachi роль
 			📍- /посмотреть роли - показывает все доступные роли
 			📍- /я буду <название роли> - изменяет вашу роль
-			📍- /сделать fisting ass <пользователь> - вы делаете ♂fisting ass♂ пользователю
-			📍- /сделать cum <пользователь> - вы делаете ♂cum♂ пользователю
+			📍- /сделать fisting ass {пользователь} - сделать ♂fisting ass♂ пользователю
+			📍- /сделать cum {пользователь} - сделать ♂cum♂ пользователю
 			📍- /пацанский гачимучи - возвращает запись из сообщества [club113661329|Пацанское Gachimuchi]
 			📍- /славянский пост - возвращает запись из [club165104294|этого сообщества]
 			📍- /словарь - словарь запрященных слов
 			📍- /gay bar - запускает гей бар
-			📍- /boy - ♂BOY NEXT DOOR♂
-			📍- /фраза - рандомная фраза из ♂Gay Bar♂
-			📍- /налить пиво <пользователь> - наливает пользователю пиво в ♂Gay Bar♂
-			📍- /налить портвейн <пользователь> - наливает пользователю портвейн в ♂Gay Bar♂
-			📍- /налить водку <пользователь> - наливает пользователю водку в ♂Gay Bar♂
-			📍- /кушать <пользователь> - отправляет пользователя кушать
+            📍- /налить пиво {пользователь} - наливает пользователю пиво в ♂Gay Bar♂
+			📍- /налить портвейн {пользователь} - наливает пользователю портвейн в ♂Gay Bar♂
+			📍- /налить водку {пользователь} - наливает пользователю водку в ♂Gay Bar♂
+            📍- /танец {пользователь} - устраивает танец с пользователем в ♂Gay Bar♂
+			📍- /кушать {пользователь} - отправляет пользователя кушать
+			📍- /boy {пользователь} - ♂BOY NEXT DOOR♂
+            📍- /fuck {пользователь} - делает пользователю ♂fuck♂
+            📍- /suck {пользователь} - делает пользователю ♂suck♂
+            📍- /отвалить письку {пользователь} - делает массовый отвал письки у пользователя, ну...
+            📍- /отвалить сиськи {пользователь} - делает отвал сисек у пользователя, ну или нет)
+			📍- /фраза - рандомная фраза из ♂Gay Bar♂			
 			📍- /сводка - сводка за текущий славянский день
+            📍- /молчащие - список всех молчащих пользователей и причины мута
+			📍- /календарь - настольный календарь славянина с путеводителем по дрочке
+			📍- /славянское фото - обложка сообщества славян
+			📍- /наше сообщество - возваращает ссылку на сообщество славян
+            📍- /какая роль у <пользователь> - Показывает роль пользователя
+			📍- /самовыпил - Производит самовыпил пользователя из беседы
+			📍- /повесить <пользователь> - Вешает пользователя на виселице
+			📍- /расстрелять {чекист} <пользователь> - НКВД расстреливает пользователя (возможно участие малолетнего чекста)
+			📍- /шлепнуть по попке {пользователь} - Шлепает пользователя по попке
+                📍Действия только для администроторовв:📍
+            📍- /чистка баб {количетсво} - автоматически отчистить {количество} баб (только для админов)
+            📍- /чистка трупов {количетсво} - автоматически отчистить {количество} трупов и аннонимнусов (только для админов)
+            📍- /итоги опроса *опрос* - подводит итоги опроса (только для админов)
+            📍- /удалить *сообщения* - удаляет данные сообщения из диалога (только для админов)
+            📍- /призвать <пользователь> <сообщение> - призывает пользователя сообщением ему (только для админов)
 			📍- /добавить слово <вид наказания> слово <слово> - добовляет в словарь запрещенное слово (только для админов)
 			📍- /удалить слово <слово> - удаляет слово из словаря (только для админов)
 			📍- /изменить роль <пользователь> <роль> - изменяет роль пользователя (только для админов)
 			📍- /кокнуть имя <пользователь> <новое имя> - изменяет имя пользователю (только для админов)
 			📍- /созвать всех <сообщение созыва> - созывает участников беседы, которые разрешили сообщения сообщества (только для админов)
 			📍- /замолчать <пользователь> - заставляет пользователя молчать месяц (только для админов)
-			📍- /говорить <пользователь> - разрешает пользователю говорить (только для админов)
-			📍- /молчащие - список всех молчащих пользователей и причины мута
+			📍- /говорить <пользователь> - разрешает пользователю говорить (только для админов)			
 			📍- /изгнать <пользователь> - исключает пользователя из беседы (только для админов)
-			📍- /призвать <пользователь> <сообщение> - призывает пользователя сообщением ему
-			📍- /календарь - настольный календарь славянина с путеводителем по дрочке
-			📍- /славянское фото - обложка сообщества славян
-			📍- /наше сообщество - возваращает ссылку на сообщество славян
 			📍- /принять закон <закон> - Принимает закон и закрепляет его в шапке (только для админов)
 			📍- /изменить закон <статья для поиска> \n <закон> - Изменяет строку с законом по регулярке (только для админов)
 			📍- /обновить закон - Перепечатывает и перезакрепляет закон (только для админов)
 			📍- /удалить закон <закон> - Удаляет строку с законом по регулярке (только для админов)
 			📍- /отчистить закон - Удаляет все законы (только для админов)
-			📍- /какая роль у <пользователь> - Показывает роль пользователя
-			📍- /повесить <пользователь> - Вешает пользователя на виселице
-			📍- /расстрелять {чекист} <пользователь> - НКВД расстреливает пользователя (возможно участие малолетнего чекста)
-			📍- /шлепнуть по попке <пользователь> - Шлепает пользователя по попке
-			📍- /похвалить <пользователь> - Выдает похвалу этому пользователю (только для админов)
+			📍- /похвалить {пользователь} - Выдает похвалу этому пользователю (только для админов)
 			📍- /онлайн - показывает, кто из братьев сейчас в сети (только для админо)");
 		}
 		elseif($chataction != null){ //События чата
@@ -726,17 +964,18 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
 			$member_id = $chataction->member_id;
 			if($typea == "chat_invite_user"){
 				if($member_id < 0){
-					MessSend($peer_ids, "Приветствуем сообщество [club$member_id|@$member_id] в славянском братстве");
+					MessSend($peer_ids, "Иностранному боту [club$member_id|@$member_id] нечего делать в Славянском братстве");
+                    kickUser($member_id);
 				}
 				else{
-					$memberName = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$member_id}&v=5.130&access_token={$token}"))->response[0]->first_name;
+					//$memberName = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$member_id}&v=5.130&access_token={$token}"))->response[0]->first_name;
 					//MessSend($peer_ids, "Приветствуем брата-славянина ".LinkUser($member_id, $memberName) . "в славянском братстве");
 					MessSendReply($peer_ids, "здравствуй супчик голубчик", $member_id);
 				}
 			}
 			elseif($typea == "chat_kick_user"){
 				$memberName = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$member_id}&v=5.130&access_token={$token}"))->response[0]->first_name;
-				MessSend($peer_ids, LinkUser($member_id, $memberName)."Оказался предателем и покинул нас. Пользователь исключен принудительно");
+				//MessSend($peer_ids, LinkUser($member_id, $memberName)." Оказался предателем и покинул нас. Пользователь исключен принудительно");
 				kickUser($member_id);
 			}
 		}		
@@ -758,6 +997,14 @@ if(strcmp($data->secret, $secretKey) !== 0 && strcmp($data->type, 'confirmation'
         $user_name = $userInfo->response[0]->first_name;
  
         MessSend($userId, "Хай, гей. Я бот для спец-беседы как бы".$user_name,$token);
+	}
+    
+    // Если это разрешение на получение сообщений
+    elseif($data->type == 'message_allow'){
+        //...получаем id нового участника
+        $userId = $data->object->from_id;
+ 
+        MessSend($userId, "Спасибо за активацию функций сообщений. Теперь вас при необходимости смогут призвать ваши братья", $token);
 	}
 
 echo('ok');

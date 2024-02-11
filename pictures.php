@@ -45,7 +45,7 @@ function makeCornersForImage($image, $radius, $background){
 function KillGD($userid, $savepath = "photo/result.jpg"){
 	global $token;
 	
-	$typevisel = random_int(0,1) == 1;
+	$typevisel = false; //random_int(0,1) == 1;
 	
 	$img    = ImageCreateFromJpeg($typevisel ? 'photo/vis.jpg' : 'photo/poves.jpg');
 	$reqvk = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$userid}&v=5.130&fields=photo_200,photo_100&access_token={$token}"))->response[0];
@@ -72,6 +72,21 @@ function RastrelGD($userid, $chekist, $savepath = "photo/result.jpg"){
 	return $savepath;
 }
 
-
+function SamovipilGD($userid, $savepath = "photo/result.jpg"){
+	global $token;
+	
+	$typevisel = false; //random_int(0,1) == 1;
+	
+	$img    = ImageCreateFromJpeg('photo/samovip.jpg');
+	$reqvk = json_decode(file_get_contents("https://api.vk.com/method/users.get?user_ids={$userid}&v=5.130&fields=photo_200,photo_100,photo_50&access_token={$token}"))->response[0];
+	file_put_contents("photo/users/$userid.jpg", file_get_contents($reqvk->photo_50));
+	$logo   = makeCornersForImage("photo/users/$userid.jpg", 10, 0x00000f);
+	 
+	imagecopy($img, $logo, 130, 10, 0, 0, 50, 50);
+	 
+	imagejpeg($img, $savepath);
+	imagedestroy($img);
+	return $savepath;
+}
 
 ?>

@@ -4,7 +4,7 @@
 <?php require_once("KillLib.php"); ?>
 
 <?php
-//////////////КАЖДЫЕ 10 МИНУТ РАБОТАЕТ
+//////////////КАЖДЫЕ 1 МИНУТУ РАБОТАЕТ
 
     foreach(GetPeers() as $tmp){
         $chatid = $tmp;
@@ -14,7 +14,7 @@
             
             $t2 = explode(':', $tt[4]);
             $m = (intval($t2[0]) * 60) + intval($t2[1]) /*+ (intval($t2[2]) / 60)*/;
-            $m -= 10;
+            $m -= 1;
             
             if($m <= 0){
                 MessSend($tt[2], "Время молчания товарища ".GetLinkUser($tt[1])." истекло. Мут снят");
@@ -35,8 +35,8 @@
             $currenttime = explode(':', date('H:i:s'));
             $ct = $currenttime[0]*60 + $currenttime[1] + $currenttime[2]/60;
             
-            if($ct - $lt > 50){
-                MessSend($chatid, "♂Gay Bar♂ закрыт из за невктивности");
+            if(abs($ct - $lt) >= 60){
+                MessSend($chatid, "♂Gay Bar♂ закрыт из за часового отсутствия активности славян в нем");
                 SetGayBar(false);
             }
         }

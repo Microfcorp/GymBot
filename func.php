@@ -1,3 +1,4 @@
+<?php require_once("keyboards.php"); ?>
 <?
 function GetPeers(){
 	global $link;
@@ -23,7 +24,11 @@ function MessSendChank($peer_id, $message){
             'peer_ids' => $peer_id,
             'access_token' => $token,
 			'random_id' => random_int(-2147483647, 2147483647),
-            'v' => '5.130',            
+            'v' => '5.130',
+            /*'keyboard' => json_encode(array(
+                'one_time' => false,
+                'buttons' => Keyboard_Main(),
+            )),*/            
         );
  
        $get_params = http_build_query($request_params);  
@@ -34,7 +39,10 @@ function MessSendChank($peer_id, $message){
 	   //curl_setopt($ch, CURLOPT_POST, 1);
        $m = @curl_exec($ch);
        curl_close($ch);
-       return json_decode($m, true)['response'][0]['conversation_message_id'];
+       if($peer_id > 2000000000)
+           return json_decode($m, true)['response'][0]['conversation_message_id'];
+       else
+           return json_decode($m, true)['response'][0]['message_id'];
 }
 function MessSendAttach($peer_id, $message, $atach){
 	global $token;
@@ -145,13 +153,51 @@ function MessRead($peer_id, $mesid){
 
        return json_decode($m, true)['response'];
 }
+function MessRestore($mesid){
+	global $token;
+	$request_params = array(
+            'message_id' => $mesid,
+            'access_token' => $token,
+            'v' => '5.131',            
+        );
+       $get_params = http_build_query($request_params);  
+
+       $ch = curl_init();
+       curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/messages.restore?' . $get_params);
+       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+       $m = @curl_exec($ch);
+       curl_close($ch);
+
+       return json_decode($m, true)['response'];
+}
+function isMessagesFromGroupAllowed($userid){
+	global $token;
+	$request_params = array(
+            'user_id' => $userid,
+            'group_id' => '203187765',
+            'access_token' => $token,
+            'v' => '5.131',            
+        );
+       $get_params = http_build_query($request_params);  
+
+       $ch = curl_init();
+       curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/messages.isMessagesFromGroupAllowed?' . $get_params);
+       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+       $m = @curl_exec($ch);
+       curl_close($ch);
+
+       return json_decode($m, true)['response']['is_allowed'] == 1;
+}
 function getConversationMembers(){
 	global $token;
 	global $chatid;
 	$request_params = array(
             'peer_id' => $chatid,
             'access_token' => $token,
-            'v' => '5.130',            
+            'count' => "1",
+            'extended' => "1",
+            'fields' => "online",
+            'v' => '5.144',            
         );
     $get_params = http_build_query($request_params);  
     $ch = curl_init();
@@ -160,6 +206,40 @@ function getConversationMembers(){
     $m = @curl_exec($ch);
     curl_close($ch);
 	//file_put_contents("t.txt", $m);
+    return json_decode($m, true)['response'];
+}
+function getConversationsMembersAll(){
+	global $token;
+	global $chatid;
+	$request_params = array(
+            'peer_id' => $chatid,
+            'access_token' => $token,
+            'fields' => "sex, last_seen",
+            'v' => '5.144',            
+        );
+    $get_params = http_build_query($request_params);  
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/messages.getConversationMembers?' . $get_params);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $m = @curl_exec($ch);
+    curl_close($ch);
+	//file_put_contents("t.txt", $m);
+    return json_decode($m, true)['response'];
+}
+
+function SetGroupOnline($groupid, $stat){
+	global $token;
+	$request_params = array(
+            'group_id' => $groupid,
+            'access_token' => $token,
+            'v' => '5.131',            
+        );
+    $get_params = http_build_query($request_params);  
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, ($stat ? 'https://api.vk.com/method/groups.enableOnline?' : 'https://api.vk.com/method/groups.disableOnline?') . $get_params);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $m = @curl_exec($ch);
+    curl_close($ch);
     return json_decode($m, true)['response'];
 }
 
@@ -185,7 +265,7 @@ function getInviteLink(){
 function _vkApi_call($method, $params = array()) {
 	global $token;
   $params['access_token'] = $token;
-  $params['v'] = "5.130";
+  $params['v'] = "5.131";
 
   $query = http_build_query($params);
   $url = 'https://api.vk.com/method/'.$method.'?'.$query;
@@ -203,7 +283,7 @@ function _vkApi_call($method, $params = array()) {
 function vkApi_photosGetMessagesUploadServer() {
 	global $chatid;
   return _vkApi_call('photos.getMessagesUploadServer', array(
-    'peer_id' => $chatid,
+    'peer_id' => $chatid
   ));
 }
 
@@ -399,6 +479,24 @@ function getConversationsById($chatid){
     return json_decode($m, true)['response'];
 }
 
+function getShortLink($link){
+	global $token;
+	global $chatid;
+	$request_params = array(
+            'url' => $link,
+            'private' => '0',
+            'access_token' => $token,
+            'v' => '5.131',            
+        );
+    $get_params = http_build_query($request_params);  
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.vk.com/method/utils.getShortLink?' . $get_params);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $m = @curl_exec($ch);
+    curl_close($ch);
+    return json_decode($m, true)['response'];
+}
+
 function setActivity(){
 	global $token;
 	global $chatid;
@@ -433,7 +531,7 @@ function kickUser($userid){
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $m = @curl_exec($ch);
     curl_close($ch);
-    file_put_contents("r.txt", $m);
+    //file_put_contents("r.txt", $m);
     return json_decode($m, true);
 }
 
@@ -461,7 +559,7 @@ function GetWall($ownerid, $offset = 0, $count = 1, $issavecount = true){
     curl_close($ch);
 	$rt = json_decode($m, true)['response'];
 	
-	if($issavecount) file_put_contents('countwall/'.$ownerid, $rt['count']);
+	if($issavecount && $rt['count'] > 0) file_put_contents('countwall/'.$ownerid, $rt['count']);
     return $rt;
 }
 
@@ -598,6 +696,8 @@ function GetName($id){
 		return trim($row['Name']);
 }
 function GetLinkUser($userid){
+    if(intval($userid) < 0)
+        return "";
 	return LinkUser($userid, GetName($userid));
 }
 function LinkUser($userid, $name){
@@ -638,24 +738,37 @@ function GenerateSlavyanVodka($peerid){
     
     $chatInfo = getConversationsById($peerid);
     $chatsettings = $chatInfo['items'][0]['chat_settings'];
+    $actives = $chatsettings['active_ids'];
+    $activernd = $actives[rand(0, count($actives)-1)];
     
+    $hour = date('H');
     $month = date('m');
 	$day = date('d');
 	$year = date('Y');
+	$dayNedely = date('N');
 	$isdrochka = ($month != 11);
 	$monthrus = $Month_r[$month][1];
-    $zavod = date('N') > 5;
+    $zavod = $dayNedely > 5;	
     
-    $retur = "Славянкая 🍷водка🍷 за $day $monthrus $year года\n";
-    $retur .= "В беседе: ⚖".$chatsettings['title']."⚖\n";
-    $retur .= "С количеством: 🗡".$chatsettings['members_count']."🗡\n";
+    $retur = "Славянская 🍷водка🍷 за $day $monthrus $year года\n";
+    $retur .= "В беседе: ⚖".$chatsettings['title']."⚖\n"; //название беседы
+    $retur .= "С количеством: 🗡".$chatsettings['members_count']."🗡\n"; //количество участников
+    //$retur .= "Пользователь дня: 🗡".GetLinkUser($activernd)."🗡\n"; //количество участников
     $retur .= "\n";
-    $retur .= "Дрочить славянам: ".($isdrochka ? "разрешено" : "ЗАПРЕЩЕННО")."\n";
-    $retur .= ((!$isdrochka && ($day > 29) && ($month+1 != 11)) ? "Осталось совсем немного, воздержись Брат"."\n" : "");
-    $retur .= "На заводе: ".($zavod ? "выходной" : "рабочий день")."\n";
-    $retur .= ($zavod ? "" : "Все на завод!"."\n");
-    $retur .= "Приятного ".(!$zavod ? "трудового рабочего" : "")." дня, Славяне"."\n";
+    $retur .= "Дрочить славянам: ".($isdrochka ? "разрешено" : "ЗАПРЕЩЕННО")."\n"; //разрешения на дрочку
+    $retur .= ((!$isdrochka && ($day > 29) && ($month+1 != 11)) ? "Осталось совсем немного, воздержись Брат"."\n" : ""); //В конце ноября
+    $retur .= "На заводе: ".($zavod ? "выходной" : ($hour >= ENDDAYRAB ? "рабочий день окончен" : "РАБочий день"))."\n"; //работа на заводе
+    $retur .= ($dayNedely == 7 ? "Завтра на завод"."\n" : ""); //завтра на завод
+    $retur .= ($dayNedely == 5 ? "Завтра уже выходной"."\n" : ""); //завтра выходной
+    $retur .= ($hour > (ENDDAYRAB-2) && $hour < ENDDAYRAB ? "Скоро окончание рабочего дня"."\n" : ""); //скоро конец рабочего
+    $retur .= ($hour > (STARTDAYRAB-2) && $hour < STARTDAYRAB ? "Поспеши, скоро начнется РАБочий день"."\n" : ""); //скоро начало рабочего
+    $retur .= ($zavod ? "" : ($hour >= ENDDAYRAB ? "Работа окончена!" : "Все на завод!")."\n"); //созыв на завод
+    $retur .= "Приятного ".(!$zavod ? ($hour >= ENDDAYRAB ? "окончания" : (rand(0,2) == 1 ? "трудового" : "рабочего")) : "выходного")." дня, братья Славяне"."\n"; //подвальчик
     return $retur;
+}
+
+function IsRabDay(){
+   return date('N') <= 5; 
 }
 
 /**

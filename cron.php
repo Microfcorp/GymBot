@@ -16,23 +16,30 @@ function CheckPost($ownerid){
 	//if($newc < $stc) foreach(GetPeers() as $tmp) MessSendAttach($tmp, "В сообщетсве [club".mb_substr($ownerid, 1)."|@".mb_substr($ownerid, 1)."] была удалена запись. Последняя запись на текущий момент:", "wall".$ownerid."_".$wal['items'][0]['id']);
 }
 //паблик бота
-CheckPost("-203187765");
+//CheckPost("-203187765");
 //паблик славян
-CheckPost("-165104294");
+//CheckPost("-165104294");
 //гачи на каждый день
-CheckPost("-113661329");
+//CheckPost("-113661329");
 
-/*if($TH == 10 && $TM < 30){ //Просьба доната
+if($TH == 10 && $TM < 30){ //Просьба доната
     $photo = _bot_uploadPhoto('photo/pohval.jpg');
     foreach(GetPeers() as $tmp)
-        MessSendAttach($tmp, "Товарищи, поддержите бота на https://donationalerts.com/r/microf", 'photo'.$photo['owner_id'].'_'.$photo['id']);
-}*/
+        MessSendAttach($tmp, "Товарищи, поддержите бота и Лёху на https://donationalerts.com/r/razbiyan", 'photo'.$photo['owner_id'].'_'.$photo['id']);
+}
 
-if($TH == 12 && $TM < 30){ //Сводка информации
-    $photo = _bot_uploadPhoto('photo/dzed.jpg');  
+if(($TH == 7 && $TM < 30) || ($TH == 15 && $TM < 30)){ //Моя огромная любовь к Виктории
+    $photo = _bot_uploadPhoto($LoveFiles[mt_rand(0, count($LoveFiles) - 1)]);
+    foreach(GetPeers() as $tmp)
+        MessSendAttach($tmp, "@vtretiak5, просто так", 'photo'.$photo['owner_id'].'_'.$photo['id']);
+}
+
+if($TH == 12 && $TM < 30 && false){ //Сводка информации      
     foreach(GetPeers() as $tmp){
-        MessSendAttach($tmp, GenerateSlavyanVodka($tmp), 'photo'.$photo['owner_id'].'_'.$photo['id']);
-        MessSendAttach($tmp, "Пусть этот день с вами будет:", GenerateRandomAudioAttachmnt());
+		$chatid = $tmp;
+		$photo = _bot_uploadPhoto(IsRabDay() ? 'photo/spanzavod.jpg' : 'photo/pivoall.jpg');
+        MessSendAttach($tmp, "Полдень, братья\n".GenerateSlavyanVodka($tmp), 'photo'.$photo['owner_id'].'_'.$photo['id']);
+        //MessSendAttach($tmp, "Пусть этот день с вами будет:", GenerateRandomAudioAttachmnt());
     }
 }
 ?>

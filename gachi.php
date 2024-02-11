@@ -63,6 +63,6 @@ function SetGayBar($bar){
 }
 function GetRandomCum(){
 	global $CumType;
-	return $CumType[rand(-1, count($CumType)-1)];
+	return $CumType[rand(0, count($CumType)-1)];
 }
 ?>
